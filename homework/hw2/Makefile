@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-ggdb
+CFLAGS=-ggdb -std=c99
 
 all: client server
 

@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <time.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -73,27 +75,34 @@ int AcceptTCPConnection(int servSock) {
 }
 
 void HandleTCPClient(int clntSocket) {
+  char datestring[5] = "date\0";
+  char timestring[5] = "time\0";
   char buffer[BUFSIZE]; // Buffer for echo string
+  char ret[11];
+
+  // Get current date and time
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
 
   // Receive message from client
   ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
   if (numBytesRcvd < 0)
     DieWithSystemMessage("recv() failed");
 
-  // Send received string and receive again until end of stream
-  while (numBytesRcvd > 0) { // 0 indicates end of stream
-    // Echo message back to client
-    ssize_t numBytesSent = send(clntSocket, buffer, numBytesRcvd, 0);
-    if (numBytesSent < 0)
-      DieWithSystemMessage("send() failed");
-    else if (numBytesSent != numBytesRcvd)
-      DieWithUserMessage("send()", "sent unexpected number of bytes");
-
-    // See if there is more data to receive
-    numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
-    if (numBytesRcvd < 0)
-      DieWithSystemMessage("recv() failed");
+  // Figure out which string was given
+  if(strcmp(buffer, datestring) == 0) {
+    strftime(ret, 11, "%Y-%m-%d", &tm);
   }
+  if(strcmp(buffer, timestring) == 0) {
+    strftime(ret, 11, "%H:%M:%S", &tm);
+  }
+
+  // Echo message back to client
+  ssize_t numBytesSent = send(clntSocket, ret, strlen(ret), 0);
+  if (numBytesSent < 0)
+    DieWithSystemMessage("send() failed");
+  else if (numBytesSent != strlen(ret))
+    DieWithUserMessage("send()", "sent unexpected number of bytes");
 
   close(clntSocket); // Close client socket
 }

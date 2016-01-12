@@ -52,7 +52,6 @@ int main(int argc, char *argv[]) {
 
   // Receive the same string back from the server
   unsigned int totalBytesRcvd = 0; // Count of total bytes received
-  fputs("Received: ", stdout);     // Setup to print the echoed string
   while (totalBytesRcvd < echoStringLen) {
     char buffer[BUFSIZE]; // I/O buffer
     /* Receive up to the buffer size (minus 1 to leave space for
