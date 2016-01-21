@@ -13,6 +13,103 @@
 #include <arpa/inet.h>
 #include "Practical.h"
 
+
+struct Host {
+    char hostname[50], portNum[60], serverPath[600];
+};
+
+struct Request {
+    struct Host host;
+    char method[10];
+};
+
+
+/**
+ * processURL is a function that takes a pointer to a Host struct and the URL of the request to be made.
+ *
+ * It processes the URL into the parameters within the given Host struct, giving it the hostname, portNumber,
+ * and serverPath.
+ */
+void processURL(struct Host *host, char* url) {
+    
+    long portColonIndex, serverRootIndex;
+    char withoutHTTP[700];
+
+    // Removes http:// from input if input contains http://
+    if(strstr(url, "//") != NULL) {
+        strcpy(withoutHTTP, strstr(url, "//"));
+        memmove(withoutHTTP, withoutHTTP + 2, strlen(withoutHTTP));
+    }
+    else {
+        strcpy(withoutHTTP, url);
+    }
+
+    // Get hostname if specified with colon
+    if(strchr(withoutHTTP, ':') != NULL || strchr(withoutHTTP, '/') != NULL) {
+        if(strchr(withoutHTTP, ':') != NULL) {
+            portColonIndex = strlen(withoutHTTP) - strlen(strchr(withoutHTTP, ':'));
+            memcpy(host->hostname, withoutHTTP, portColonIndex);
+            host->hostname[portColonIndex] = '\0';
+        }
+        else {
+            serverRootIndex = strlen(withoutHTTP) - strlen(strchr(withoutHTTP, '/'));
+            memcpy(host->hostname, withoutHTTP, serverRootIndex);
+            host->hostname[serverRootIndex] = '\0';
+        }
+    }
+    else {
+        strcpy(host->hostname, withoutHTTP);
+    }
+
+    // Get port number
+    if(strchr(withoutHTTP, ':') != NULL) {
+        if(strchr(withoutHTTP, '/') != NULL) {
+            serverRootIndex = strlen(withoutHTTP) - strlen(strchr(withoutHTTP, '/'));
+            memcpy(host->portNum, withoutHTTP, serverRootIndex);
+            strcpy(host->portNum, strchr(host->portNum, ':'));
+        }
+        else {
+            strcpy(host->portNum, strchr(withoutHTTP, ':'));
+        }
+        memmove(host->portNum, host->portNum+1, strlen(host->portNum));
+    }
+    else {
+        strcpy(host->portNum, "80");
+    }
+
+    // Get server path
+    if(strchr(withoutHTTP, '/') != NULL) {
+        strcpy(host->serverPath, strchr(withoutHTTP, '/'));
+    }
+    else {
+        strcpy(host->serverPath, "/");
+    }
+};
+
+
+/**
+ * httpReguestString turns a struct object Request into the http string that it can send to the server
+ */
+void httpRequestString(char **s, struct Request request) {
+
+    size_t size;
+
+    if(strlen(request.method) == 0) {
+        strcpy(request.method, "GET");
+    }
+
+    size = snprintf(NULL, 0, "%s %s HTTP/1.1\nHost: %s\n\n", request.method, request.host.serverPath, request.host.hostname);
+    *s = (char *)malloc(size);
+    snprintf(*s, size+1, "%s %s HTTP/1.1\nHost: %s\n\n", request.method, request.host.serverPath, request.host.hostname);
+};
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char *argv[]) {
 
     // Test for correct number of arguments
@@ -20,59 +117,25 @@ int main(int argc, char *argv[]) {
         DieWithUserMessage("Parameter(s)", "<Server URL>");
 
     // Local variables setup
-    struct addrinfo hints;
-    struct addrinfo *result, *rp;
+    struct Host requestHost;
+    struct Request request;
+    struct addrinfo hints, *result, *rp;
     int dnsResponse, sfd;
-    long portColonIndex, serverRootIndex;
-    char hostname[50], portNum[60], serverPath[600];
+    char *requestString;
 
     // Set getAddrInfo struct
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
-    hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+    hints.ai_socktype = 0;          /* Datagram socket */
     hints.ai_flags = 0;
     hints.ai_protocol = 0;          /* Any protocol */
 
-    // Get hostname
-    if(strchr(argv[1], ':') != NULL || strchr(argv[1], '/') != NULL) {
-        if(strchr(argv[1], ':') != NULL) {
-            portColonIndex = strlen(argv[1]) - strlen(strchr(argv[1], ':'));
-            memcpy(hostname, argv[1], portColonIndex);
-            hostname[portColonIndex] = '\0';
-        }
-        else {
-            serverRootIndex = strlen(argv[1]) - strlen(strchr(argv[1], '/'));
-            memcpy(hostname, argv[1], serverRootIndex);
-            hostname[serverRootIndex] = '\0';
-        }
-    }
-    else {
-        strcpy(hostname, argv[1]);
-    }
-
-    // Get port number
-    if(strchr(argv[1], ':') != NULL) {
-        if(strchr(argv[1], '/') != NULL) {
-            serverRootIndex = strlen(argv[1]) - strlen(strchr(argv[1], '/'));
-            memcpy(portNum, argv[1], serverRootIndex);
-            strcpy(portNum, strchr(portNum, ':'));
-        }
-        else {
-            strcpy(portNum, strchr(argv[1], ':'));
-        }
-        memmove(portNum, portNum+1, strlen(portNum));
-    }
-    else {
-        strcpy(portNum, "80");
-    }
-
-    // Get server path
-    if(strchr(argv[1], '/') != NULL) {
-        strcpy(serverPath, strchr(argv[1], '/'));
-    }
+    // Processes the URL
+    processURL(&requestHost, argv[1]);
+    request.host = requestHost;
 
     // Do DNS lookup
-    dnsResponse = getaddrinfo(hostname, portNum, &hints, &result);
+    dnsResponse = getaddrinfo(requestHost.hostname, requestHost.portNum, &hints, &result);
 
     // DNS lookup fail
     if (dnsResponse != 0) {
@@ -81,6 +144,7 @@ int main(int argc, char *argv[]) {
 
     // loop through address structs
     for (rp = result; rp != NULL; rp = rp->ai_next) {
+
         sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
         if (sfd == -1) {
             continue;
@@ -88,7 +152,12 @@ int main(int argc, char *argv[]) {
         // Successfully Connected
         if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1) {
 
-            // Receive the same string back from the server
+            httpRequestString(&requestString, request);
+
+            // Send the HTTP request to the server
+            if (send(sfd, requestString, strlen(requestString), 0) < 0)
+                DieWithSystemMessage("send() failed");
+
             char buffer[BUFSIZE]; // I/O buffer
             /* Receive up to the buffer size (minus 1 to leave space for
              a null terminator) bytes from the sender */
