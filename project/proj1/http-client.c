@@ -1,7 +1,3 @@
-//
-// Created by Daniel Kao on 1/19/16.
-//
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +10,14 @@
 #include <arpa/inet.h>
 #include "Practical.h"
 
-
+/**
+ * http-client.c
+ *
+ * Author: Daniel Kao
+ * PID: A10546439
+ * Date: 1/19/16
+ *
+ */
 
 struct Host {
     char hostname[50], portNum[60], serverPath[600];
@@ -28,12 +31,15 @@ struct Request {
 struct Header {
     char httpVersion[20], contentType[50];
     unsigned long contentLength;
+    char * header;
 };
 
 struct Response {
     struct Header header;
-    //char * body;
+    bool headerRead;
+    char * body;
 };
+
 
 /**
  * processURL is a function that takes a pointer to a Host struct and the URL of the request to be made.
@@ -83,6 +89,7 @@ void processURL(struct Host *host, char* url) {
             strcpy(host->portNum, strchr(withoutHTTP, ':'));
         }
         memmove(host->portNum, host->portNum+1, strlen(host->portNum));
+        host->portNum[strlen(host->portNum) - 2] = '\0';
     }
     else {
         strcpy(host->portNum, "80");
@@ -116,15 +123,142 @@ void httpRequestString(char **s, struct Request request) {
 
 
 /**
- *
+ * httpResponseComplete takes a response struct and returns whether or not the struct is complete, valid
+ * response.
  */
 bool httpResponseComplete(struct Response response) {
-    if(response.header.contentLength == 0) {
+
+    // If header has not been fully read
+    if(!response.headerRead) {
         return false;
     }
+
+    // If header has been read, contentLength has been read, and the body is the same length.
+    if(response.header.contentLength > 0 && strlen(response.body) == response.header.contentLength) {
+        return true;
+    }
+
+    // Otherwise return false
     return false;
 };
 
+
+/**
+ * procBuffer takes a response struct and a buffer and updates the response struct to appropriately
+ * reflect the new information.
+ */
+void procBuffer(struct Response * response, char buffer[]) {
+
+    // Carriage Return Line Feed
+    char doublecrlf[] = "\r\n\r\n";
+
+    // Base case: do nothing if buffer is empty.
+    if(strlen(buffer) == 0) {
+        return;
+    }
+
+    // Header has not been completely read yet
+    if(!response->headerRead) {
+
+        // Header has not been started yet
+        if(strlen(response->header.header) == 0 && !strstr(buffer, doublecrlf)) {
+
+            // Initialize header text and copy buffer into it.
+            response->header.header = (char *)malloc(BUFSIZE);
+            strcpy(response->header.header, buffer);
+        }
+
+        // Header has ending within the buffer
+        else if(strlen(response->header.header) == 0 && strstr(buffer, doublecrlf)) {
+
+            // Copy over only the header data
+            size_t headerEndIndex = strlen(buffer) - strlen(strstr(buffer, doublecrlf)) + 1;
+            response->header.header = (char *)malloc(headerEndIndex);
+            memcpy(response->header.header, buffer, headerEndIndex);
+            response->header.header[headerEndIndex] = '\0';
+
+            // Set read header to true
+            response->headerRead = true;
+        }
+
+        // Header does not have ending within the buffer
+        else if(strlen(response->header.header) != 0 && !strstr(buffer, doublecrlf)) {
+
+            // Append the entire buffer to the end of the existing one
+            char * temp = malloc(strlen(response->header.header) + strlen(buffer));
+            memcpy(temp, response->header.header, 0);
+            memcpy(temp, buffer, strlen(response->header.header));
+
+            // Check if new header has ending
+            if(strstr(temp, doublecrlf)) {
+
+                // Free the old string
+                free(response->header.header);
+
+                // Copy the appropriate part of the new string into the header
+                size_t headerEndIndex = strlen(temp) - strlen(strstr(temp, doublecrlf)) + 1;
+                response->header.header = (char *)malloc(headerEndIndex);
+                memcpy(response->header.header, temp, headerEndIndex);
+                response->header.header[headerEndIndex] = '\0';
+
+                // Set read header to true
+                response->headerRead = true;
+            }
+
+            // New string has no ending and will be copied back into the response object
+            else {
+
+                // Free the old string
+                free(response->header.header);
+
+                // Resize the new string
+                response->header.header = malloc(strlen(temp));
+
+                // Copy temp into the new string
+                strcpy(response->header.header, temp);
+            }
+
+            free(temp);
+        }
+
+        // Header has already been started and has ending in the buffer
+        else if(strlen(response->header.header) != 0 && strstr(buffer, doublecrlf)) {
+
+            // Append the entire buffer to the end of the existing one
+            char * temp = malloc(strlen(response->header.header) + strlen(buffer));
+            memcpy(temp, response->header.header, 0);
+            memcpy(temp, buffer, strlen(response->header.header));
+
+            // Free the old string
+            free(response->header.header);
+
+            // Append the entire buffer to the end of the existing one
+            size_t headerEndIndex = strlen(temp) - strlen(strstr(temp, doublecrlf)) + 1;
+            response->header.header = (char *)malloc(headerEndIndex);
+            memcpy(response->header.header, temp, headerEndIndex);
+            response->header.header[headerEndIndex] = '\0';
+
+            // Set read header to true
+            response->headerRead = true;
+
+            free(temp);
+        }
+    }
+
+    // Reading the body
+    if(response->headerRead) {
+
+        // TODO Header ending is in the buffer
+        if(strstr(buffer, doublecrlf)) {
+
+        }
+
+        // TODO Header ending is not in the buffer
+        else if (!strstr(buffer, doublecrlf)) {
+
+        }
+    }
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -164,13 +298,11 @@ int main(int argc, char *argv[]) {
 
     // DNS lookup fail
     if (dnsResponse != 0) {
-        exit(EXIT_FAILURE);
+        DieWithSystemMessage("getaddrinfo() failed");
     }
 
     // Generate the request string
     httpRequestString(&requestString, request);
-
-    printf("%s\n", requestString);
 
     // loop through address structs
     for (rp = result; rp != NULL; rp = rp->ai_next) {
@@ -188,6 +320,7 @@ int main(int argc, char *argv[]) {
 
             // Initialize response struct
             memset(&response, 0, sizeof(struct Response));
+            response.headerRead = false;
 
             // Send the HTTP request to the server
             if (send(sfd, requestString, strlen(requestString), 0) < 0) {
@@ -197,24 +330,23 @@ int main(int argc, char *argv[]) {
             // Continue to recv until the data is complete
             while (!httpResponseComplete(response)) {
 
+                printf("%d %ld %ld\n", response.headerRead, strlen(response.body), response.header.contentLength);
+
                 // I/O buffer
                 char buffer[BUFSIZE];
 
                 // Receive up to the buffer size (minus 1 to leave space for
                 // a null terminator) bytes from the sender
-                ssize_t numBytes = recv(sfd, buffer, BUFSIZE - 1, 0);
+                ssize_t numBytes = recv(sfd, buffer, BUFSIZE, 0);
 
-                printf("errno: %s\n", strerror(errno));
-                printf("numbytes: %ld\n", numBytes);
+                procBuffer(&response, buffer);
 
                 // If the server is no longer returning any more but the system expects more
                 if (numBytes == 0) {
-                    fputs("2", stdout);      // Print the echo buffer
+                    fputs("2", stdout);     // Print the echo buffer
+                    fputc('\n', stdout);    // Print a final linefeed
                     exit(2);
                 }
-
-                buffer[numBytes] = '\0';	/* Terminate the string! */
-                //fputs(buffer, stdout);      // Print the echo buffer
             }
 
             break;
