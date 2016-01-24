@@ -6,12 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include "Practical.h"
+
 
 
 struct Host {
@@ -23,6 +25,15 @@ struct Request {
     char method[10];
 };
 
+struct Header {
+    char httpVersion[20], contentType[50];
+    unsigned long contentLength;
+};
+
+struct Response {
+    struct Header header;
+    //char * body;
+};
 
 /**
  * processURL is a function that takes a pointer to a Host struct and the URL of the request to be made.
@@ -88,7 +99,7 @@ void processURL(struct Host *host, char* url) {
 
 
 /**
- * httpReguestString turns a struct object Request into the http string that it can send to the server
+ * httpReguestString turns a struct object Request into the http string that it can send to the server.
  */
 void httpRequestString(char **s, struct Request request) {
 
@@ -98,11 +109,21 @@ void httpRequestString(char **s, struct Request request) {
         strcpy(request.method, "GET");
     }
 
-    size = snprintf(NULL, 0, "%s %s HTTP/1.1\nHost: %s\n\n", request.method, request.host.serverPath, request.host.hostname);
+    size = snprintf(NULL, 0, "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", request.method, request.host.serverPath, request.host.hostname);
     *s = (char *)malloc(size);
-    snprintf(*s, size+1, "%s %s HTTP/1.1\nHost: %s\n\n", request.method, request.host.serverPath, request.host.hostname);
+    snprintf(*s, size + 1, "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", request.method, request.host.serverPath, request.host.hostname);
 };
 
+
+/**
+ *
+ */
+bool httpResponseComplete(struct Response response) {
+    if(response.header.contentLength == 0) {
+        return false;
+    }
+    return false;
+};
 
 
 
@@ -119,9 +140,13 @@ int main(int argc, char *argv[]) {
     // Local variables setup
     struct Host requestHost;
     struct Request request;
+    struct Response response;
     struct addrinfo hints, *result, *rp;
     int dnsResponse, sfd;
     char *requestString;
+    struct timeval tv;
+    tv.tv_sec = 3;  /* 30 Secs Timeout */
+    tv.tv_usec = 0;  // Not init'ing this can cause strange errors
 
     // Set getAddrInfo struct
     memset(&hints, 0, sizeof(struct addrinfo));
@@ -142,6 +167,11 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    // Generate the request string
+    httpRequestString(&requestString, request);
+
+    printf("%s\n", requestString);
+
     // loop through address structs
     for (rp = result; rp != NULL; rp = rp->ai_next) {
 
@@ -149,28 +179,47 @@ int main(int argc, char *argv[]) {
         if (sfd == -1) {
             continue;
         }
+
+        // set timeout for socket
+        setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval));
+
         // Successfully Connected
         if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1) {
 
-            httpRequestString(&requestString, request);
+            // Initialize response struct
+            memset(&response, 0, sizeof(struct Response));
 
             // Send the HTTP request to the server
-            if (send(sfd, requestString, strlen(requestString), 0) < 0)
+            if (send(sfd, requestString, strlen(requestString), 0) < 0) {
                 DieWithSystemMessage("send() failed");
+            }
 
-            char buffer[BUFSIZE]; // I/O buffer
-            /* Receive up to the buffer size (minus 1 to leave space for
-             a null terminator) bytes from the sender */
-            long numBytes = recv(sfd, buffer, BUFSIZE - 1, 0);
-            if (numBytes < 0)
-                DieWithSystemMessage("recv() failed");
-            else if (numBytes == 0)
-                DieWithUserMessage("recv()", "connection closed prematurely");
-            buffer[numBytes] = '\0';    // Terminate the string!
-            fputs(buffer, stdout);      // Print the echo buffer
+            // Continue to recv until the data is complete
+            while (!httpResponseComplete(response)) {
+
+                // I/O buffer
+                char buffer[BUFSIZE];
+
+                // Receive up to the buffer size (minus 1 to leave space for
+                // a null terminator) bytes from the sender
+                ssize_t numBytes = recv(sfd, buffer, BUFSIZE - 1, 0);
+
+                printf("errno: %s\n", strerror(errno));
+                printf("numbytes: %ld\n", numBytes);
+
+                // If the server is no longer returning any more but the system expects more
+                if (numBytes == 0) {
+                    fputs("2", stdout);      // Print the echo buffer
+                    exit(2);
+                }
+
+                buffer[numBytes] = '\0';	/* Terminate the string! */
+                //fputs(buffer, stdout);      // Print the echo buffer
+            }
 
             break;
         }
+
         close(sfd);
     }
 
@@ -182,7 +231,8 @@ int main(int argc, char *argv[]) {
 
     // No longer needed
     freeaddrinfo(result);
+    free(requestString);
 
     fputc('\n', stdout); // Print a final linefeed
-    exit(0);
+    return 0;
 }
