@@ -36,12 +36,14 @@ struct Header {
     char * contentType;
     unsigned long contentLength, responseCode;
     char * header;
+    ssize_t length;
 };
 
 struct Response {
     struct Header header;
     bool headerRead;
     char * body;
+    ssize_t length;
 };
 
 
@@ -131,6 +133,16 @@ bool contains(char * a, char * b) {
  */
 bool containsIgnoreCase(char * a, char * b) {
     return (indexOfIgnoreCase(a, b) >= 0);
+};
+
+
+bool isWhiteSpace(char * a, ssize_t b) {
+    for(int i = 0; i < b; i++) {
+        if(!isspace(a[i]) && (a[i] != '\0') && (int)a[i] != 0) {
+            return false;
+        }
+    }
+    return true;
 };
 
 /**
@@ -223,7 +235,7 @@ bool httpResponseComplete(struct Response * response) {
     }
 
     // If header has been read, contentLength has been read, and the body is the same length.
-    if(response->header.contentLength > 0 && strlen(response->body) == response->header.contentLength) {
+    if(response->header.contentLength > 0 && response->header.contentLength + response->header.length + 4 == response->length) {
         return true;
     }
 
@@ -299,25 +311,25 @@ void procHeader(struct Response * response, struct Request * request) {
         // check if content-type is valid
         if(contains(response->header.contentType, "jpeg") || contains(request->host.serverPath, "jpg")) {
             if(!(contains(request->host.serverPath, ".jpg") || contains(request->host.serverPath, ".jpeg"))) {
-                printf("7\n");
+                printf("7");
                 exit(7);
             }
         }
         if(contains(response->header.contentType, "png")) {
             if(!(contains(request->host.serverPath, ".png"))) {
-                printf("7\n");
+                printf("7");
                 exit(7);
             }
         }
         if(contains(request->host.serverPath, ".jpg") || contains(request->host.serverPath, ".jpeg")) {
             if(!(contains(response->header.contentType, "jpeg") || contains(request->host.serverPath, "jpg"))) {
-                printf("7\n");
+                printf("7");
                 exit(7);
             }
         }
         if(contains(request->host.serverPath, ".png")) {
             if(!(contains(response->header.contentType, "png"))) {
-                printf("7\n");
+                printf("7");
                 exit(7);
             }
         }
@@ -339,7 +351,7 @@ void procHeader(struct Response * response, struct Request * request) {
                || response->header.responseCode == 400
                || response->header.responseCode == 403
                || response->header.responseCode == 404)) {
-                printf("3\n");
+                printf("3");
                 exit(3);
             }
             break;
@@ -351,7 +363,7 @@ void procHeader(struct Response * response, struct Request * request) {
     // Malformed header was passed in
     if(!response->header.contentLength || response->header.responseCode == 0) {
         // exit program with proper code
-        printf("4\n");
+        printf("4");
         exit(4);
     }
 }
@@ -361,15 +373,17 @@ void procHeader(struct Response * response, struct Request * request) {
  * procBuffer takes a response struct and a buffer and updates the response struct to appropriately
  * reflect the new information.
  */
-void procBuffer(struct Response * response, char buffer[], struct Request * request) {
+void procBuffer(struct Response * response, char buffer[], struct Request * request, ssize_t numBytes) {
 
     // Carriage Return Line Feed
     char doublecrlf[] = "\r\n\r\n";
 
     // Base case: do nothing if buffer is empty.
-    if(strlen(buffer) == 0) {
+    if(numBytes <= 0) {
         return;
     }
+
+    response->length += numBytes;
 
     bool proccesedHeader = false;
 
@@ -382,6 +396,8 @@ void procBuffer(struct Response * response, char buffer[], struct Request * requ
             // Initialize header text and copy buffer into it.
             response->header.header = (char *)malloc(BUFSIZE);
             strcpy(response->header.header, buffer);
+
+            response->header.length += numBytes;
         }
 
         // Header has ending within the buffer
@@ -396,11 +412,15 @@ void procBuffer(struct Response * response, char buffer[], struct Request * requ
             // Set read header to true
             response->headerRead = true;
 
+            response->header.length += indexOf(buffer, doublecrlf);
+
             procHeader(response, request);
         }
 
         // Header does not have ending within the buffer
         else if(strlen(response->header.header) != 0 && !strstr(buffer, doublecrlf)) {
+
+            response->header.length += numBytes;
 
             // Append the entire buffer to the end of the existing one
             char * temp = malloc(strlen(response->header.header) + strlen(buffer));
@@ -444,6 +464,8 @@ void procBuffer(struct Response * response, char buffer[], struct Request * requ
         // Header has already been started and has ending in the buffer
         else if(strlen(response->header.header) != 0 && strstr(buffer, doublecrlf)) {
 
+            response->header.length += indexOf(buffer, doublecrlf);
+
             // Append the entire buffer to the end of the existing one
             char * temp = malloc(strlen(response->header.header) + strlen(buffer));
             strcpy(temp, response->header.header);
@@ -469,6 +491,7 @@ void procBuffer(struct Response * response, char buffer[], struct Request * requ
         proccesedHeader = true;
     }
 
+    /*
     // Reading the body
     if(response->headerRead) {
 
@@ -496,10 +519,10 @@ void procBuffer(struct Response * response, char buffer[], struct Request * requ
         // Save to response body
         free(response->body);
         response->body = (char *)malloc(strlen(temp));
-        strcpy(response->body, temp);
+        memcpy(response->body, temp, strlen(temp));
 
         free(temp);
-    }
+    }*/
 }
 
 
@@ -569,17 +592,15 @@ int main(int argc, char *argv[]) {
 
         // Successfully Connected
         if (connect(sfd, rp->ai_addr, rp->ai_addrlen) == 0) {
-            //printf("errno: %s\n", strerror(errno));
 
             if(equals(strerror(errno), "Connection refused")) {
-                printf("1\n");
+                printf("1");
                 exit(1);
             }
 
             // Initialize response struct
             memset(&response, 0, sizeof(struct Response));
             response.headerRead = false;
-            //response.body = (char *)malloc(1);
 
             // Send the HTTP request to the server
             if (send(sfd, requestString, strlen(requestString), 0) < 0) {
@@ -594,40 +615,38 @@ int main(int argc, char *argv[]) {
             // Continue to recv until the data is complete
             while (!httpResponseComplete(&response)) {
 
-                // Receive up to the buffer size
-                ssize_t numBytes = recv(sfd, buffer, BUFSIZE, 0);
-                if(numBytes >= 0) {
-                    buffer[numBytes] = '\0';
-                }
+                memset(&buffer, 0, BUFSIZE);
 
-                procBuffer(&response, buffer, &request);
+                // Receive up to the buffer size
+                ssize_t numBytes = recv(sfd, buffer, BUFSIZE - 1, 0);
 
                 // If the server is no longer returning any more but the system expects more
-                if (numBytes == 0) {
+                if (numBytes == 0 || isWhiteSpace(buffer, numBytes)) {
                     numtries++;
 
-                    if(numtries == 20) {
-
-                        //printf("%ld %ld\n", response.header.contentLength, strlen(response.body));
+                    if(numtries == 5) {
 
                         if(response.headerRead) {
-                            if(strlen(response.body) == 0) {
-                                fputs("5\n", stdout);     // Print the echo buffer
+                            if(response.length <= response.header.contentLength + 4) {
+                                fputs("5", stdout);     // Print the echo buffer
                                 exit(5);
                             }
                             else {
-                                fputs("6\n", stdout);     // Print the echo buffer
+                                fputs("6", stdout);     // Print the echo buffer
                                 exit(6);
                             }
                         }
                         else {
-                            fputs("2\n", stdout);     // Print the echo buffer
+                            fputs("2", stdout);     // Print the echo buffer
                             exit(2);
                         }
 
                     }
                 }
                 else {
+
+                    procBuffer(&response, buffer, &request, numBytes);
+
                     numtries = 0;
                 }
             }
@@ -640,20 +659,13 @@ int main(int argc, char *argv[]) {
 
     // No address succeeded
     if (rp == NULL) {
-        fprintf(stderr, "Could not connect\n");
         exit(EXIT_FAILURE);
     }
-
-
-    //printf("header: %s\n", response.header.header);
-    //printf("body: %s\n", response.body);
-    //printf("%ld %ld\n", response.header.contentLength, strlen(response.body));
 
     // No longer needed
     freeaddrinfo(result);
     free(requestString);
 
     fputs("0", stdout);     // Print the echo buffer
-    fputc('\n', stdout); // Print a final linefeed
     return 0;
 }
