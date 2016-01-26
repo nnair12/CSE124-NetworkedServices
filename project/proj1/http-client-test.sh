@@ -3,32 +3,127 @@
 echo "Building http-client..."
 make
 
-echo "GET http://seed-f60-102.ucsd.edu:8000/kitty1.jpg"
-./http-client http://seed-f60-102.ucsd.edu:8000/kitty1.jpg
+# 200 OK - returns 0
+echo -n "GET http://seed-f60-102.ucsd.edu:8000 ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8000) = 0 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
 
-echo "GET http://seed-f60-102.ucsd.edu:8000/kitty2.png"
-./http-client http://seed-f60-102.ucsd.edu:8000/kitty2.png
+# 200 OK - returns 0
+echo -n "GET http://seed-f60-102.ucsd.edu:8000/subdir/file1.html ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8000/subdir/file1.html) = 0 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
 
-echo "GET http://seed-f60-102.ucsd.edu:8000/subdir/file1.html"
-./http-client http://seed-f60-102.ucsd.edu:8000/subdir/file1.html
+# 403 FORBIDDEN - returns 0
+echo -n "GET http://seed-f60-102.ucsd.edu:8000/forbidden/file2.html ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8000/forbidden/file2.html) = 0 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
 
-echo "GET http://seed-f60-102.ucsd.edu:8000/forbidden/file2.html"
-./http-client http://seed-f60-102.ucsd.edu:8000/forbidden/file2.html
+# 404 NOT FOUND - returns 0
+echo -n "GET http://seed-f60-102.ucsd.edu:8000/not_here.html ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8000/not_here.html) = 0 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
 
-echo "GET http://seed-f60-102.ucsd.edu:8000/not_here.html"
-./http-client http://seed-f60-102.ucsd.edu:8000/not_here.html
+# 200 OK - returns 0
+echo -n "GET http://seed-f60-102.ucsd.edu:8000/kitty1.jpg ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8000/kitty1.jpg) = 0 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
 
-echo "GET http://www.google.com"
-./http-client http://www.google.com
+# 200 OK - returns 0
+echo -n "GET http://seed-f60-102.ucsd.edu:8000/kitty2.png ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8000/kitty2.png) = 0 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
 
-echo "GET google.com"
-./http-client google.com
 
-echo "GET 132.239.253.94"
-./http-client 132.239.253.94
 
-echo "GET http://132.239.253.94"
-./http-client http://132.239.253.94
+# BAD SOCKET - returns 1
+#echo -n "GET http://seed-f60-102.ucsd.edu:8001 ... "
+#if [[ $(./http-client http://seed-f60-102.ucsd.edu:8001) = 1 ]]; then
+#    echo "OK"
+#else
+#    echo "FAIL"
+#fi
+
+# PREMATURE CLOSE - returns 2
+echo -n "GET http://seed-f60-102.ucsd.edu:8002 ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8002) = 2 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
+
+# BAD SERVER STATUS - returns 3
+echo -n "GET http://seed-f60-102.ucsd.edu:8003 ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8003) = 3 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
+
+# BAD RESPONSE HEADERS - returns 4
+echo -n "GET http://seed-f60-102.ucsd.edu:8004 ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8004) = 4 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
+
+# BAD RESPONSE BODY - returns 5
+echo -n "GET http://seed-f60-102.ucsd.edu:8005 ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8005) = 5 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
+
+# WRONG CONTENT LENGTH - returns 6
+echo -n "GET http://seed-f60-102.ucsd.edu:8006 ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8006) = 6 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
+
+# WRONG CONTENT TYPE - returns 7
+echo -n "GET http://seed-f60-102.ucsd.edu:8007 ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8007) = 7 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
+
+# 200 OK - returns 0
+echo -n "GET http://seed-f60-102.ucsd.edu:8008 ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8008) = 0 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
+
+# 200 OK - returns 0
+echo -n "GET http://seed-f60-102.ucsd.edu:8009 ... "
+if [[ $(./http-client http://seed-f60-102.ucsd.edu:8009) = 0 ]]; then
+    echo "OK"
+else
+    echo "FAIL"
+fi
 
 echo "Cleaning up http-client..."
 make clean
