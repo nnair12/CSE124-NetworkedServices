@@ -309,6 +309,18 @@ void procHeader(struct Response * response, struct Request * request) {
                 exit(7);
             }
         }
+        if(contains(request->host.serverPath, ".jpg") || contains(request->host.serverPath, ".jpeg")) {
+            if(!(contains(response->header.contentType, "jpeg") || contains(request->host.serverPath, "jpg"))) {
+                printf("7\n");
+                exit(7);
+            }
+        }
+        if(contains(request->host.serverPath, ".png")) {
+            if(!(contains(response->header.contentType, "png"))) {
+                printf("7\n");
+                exit(7);
+            }
+        }
     }
 
     // Get HTTP response code
