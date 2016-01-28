@@ -10,15 +10,15 @@
 
 int main(int argc, char *argv[]) {
 
-  if (argc < 3 || argc > 4) // Test for correct number of arguments
+  if (argc != 4) // Test for correct number of arguments
     DieWithUserMessage("Parameter(s)",
-        "<Server Address> <Echo Word> [<Server Port>]");
+                       "<Date/Time> <Server Address> <Server Port>");
 
-  char *servIP = argv[1];     // First arg: server IP address (dotted quad)
-  char *echoString = argv[2]; // Second arg: string to echo
+  char *echoString = argv[1]; // Second arg: string to echo
+  char *servIP = argv[2];     // First arg: server IP address (dotted quad)
 
-  // Third arg (optional): server port (numeric).  7 is well-known echo port
-  in_port_t servPort = (argc == 4) ? atoi(argv[3]) : 7;
+  // server port (numeric).
+  in_port_t servPort = (in_port_t)atoi(argv[3]);
 
   // Create a reliable, stream socket using TCP
   int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
