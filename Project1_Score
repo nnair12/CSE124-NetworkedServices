@@ -1,0 +1,20 @@
+Student:dckao
+
+Changed Directory
+Completed Make
+
+Details
+---------------------
+1. Type Bad_server_status:Expected 3 and got 3 for file forbidden/file2.html
+2. Type Wrong_content_length:Expected 6 and got 5 for file kitty1.jpg
+3. Type OK:Expected 0 and got 0 for file not_here.html
+4. Type Bad_server_status:Expected 3 and got 0 for file index.html
+5. Type OK:Expected 0 and got 0 for file subdir/file1.html
+6. Type OK:Expected 0 and got 0 for file index.html
+7. Type Wrong_content_type:Expected 7 and got 7 for file kitty2.png
+8. Type Premature_close:Expected 2 and got 2 for file kitty1.jpg
+9. Type Bad_socket:Expected 1 and got 1 for file not_here.html
+10. Type Bad_response_headers:Expected 4 and got 4 for file kitty2.png
+
+
+Score:8/10
