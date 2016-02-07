@@ -270,12 +270,12 @@ void sendHeader(int clntSocket, int errorCode, int contentLength, char * content
     }
 
     // Send header
-    int responseHeaderSize = snprintf(NULL, 0, "HTTP/1.1 %d %s\r\nServer: http-server-dckao\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", errorCode, codeString, contentType, contentLength) + 1;
+    int responseHeaderSize = snprintf(NULL, 0, "HTTP/1.1 %d %s\r\nServer: http-server-dckao\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n", errorCode, codeString, contentType, contentLength) + 1;
     char * responseHeader = (char *)malloc(responseHeaderSize);
-    snprintf(responseHeader, responseHeaderSize, "HTTP/1.1 %d %s\r\nServer: http-server-dckao\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", errorCode, codeString, contentType, contentLength);
+    snprintf(responseHeader, responseHeaderSize, "HTTP/1.1 %d %s\r\nServer: http-server-dckao\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n", errorCode, codeString, contentType, contentLength);
 
     // Send the HTTP request to the server
-    send(clntSocket, responseHeader, responseHeaderSize, 0);
+    send(clntSocket, responseHeader, responseHeaderSize - 1, 0);
 
     free(codeString);
 }
@@ -371,10 +371,8 @@ void HandleTCPClient(int clntSocket) {
     // Get file descriptor of the file that will be sent
     char abspath[1024];
     realpath(filepath, abspath);
-    printf("%s\n", abspath);
 
     if (stat(abspath, &document) == -1) {
-        printf("boo1\n");
         sendError(clntSocket, 404);
         return;
     }
@@ -386,7 +384,6 @@ void HandleTCPClient(int clntSocket) {
     }
 
     if(access(abspath, F_OK ) == -1 ) {
-        printf("boo2\n");
         sendError(clntSocket, 404);
         return;
     }
