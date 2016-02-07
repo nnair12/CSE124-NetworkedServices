@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/stat.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -14,10 +15,16 @@
 #include <ctype.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/sendfile.h>
 #include "Practical.h"
 
 /**
  * http-server.c
+ *
+ * At a high level, a web server listens for connections on a socket
+ * (bound to a specific port on a host machine). Clients connect to
+ * this socket and use a simple text-based protocol to retrieve files
+ * from the server.
  *
  * Author: Daniel Kao
  * PID: A10546439
@@ -25,65 +32,232 @@
  *
  */
 
+int servPort;
+struct stat documentRoot;
+char * documentRootPath;
 
+struct Host {
+    char * hostname;
+    char * portNum;
+    char * serverPath;
+};
 
-static const int MAXPENDING = 500; // Maximum outstanding connection requests
+struct Request {
+    struct Host host;
+    char * method;
+    char * userAgent;
+    char * requestHeader;
+    char * requestBody;
+};
 
 // Structure of arguments to pass to client thread
 struct ThreadArgs {
     int clntSock; // Socket descriptor for client
 };
 
+// Maximum outstanding connection requests
+static const int MAXPENDING = 500;
 
 
-int SetupTCPServerSocket(const char *service) {
-    // Construct the server address structure
-    struct addrinfo addrCriteria;                   // Criteria for address match
-    memset(&addrCriteria, 0, sizeof(addrCriteria)); // Zero out structure
-    addrCriteria.ai_family = AF_UNSPEC;             // Any address family
-    addrCriteria.ai_flags = AI_PASSIVE;             // Accept on any address/port
-    addrCriteria.ai_socktype = SOCK_STREAM;         // Only stream sockets
-    addrCriteria.ai_protocol = IPPROTO_TCP;         // Only TCP protocol
+/**
+ * equals takes two char arrays and returns true if they are equal.
+ */
+bool equals(char * a, char * b) {
+    if(strlen(a) != strlen(b)) {
+        return false;
+    }
+    for(int i = 0; i < strlen(a); i++) {
+        if(a[i] != b[i]) {
+            return false;
+        }
+    }
+    return true;
+};
 
-    struct addrinfo *servAddr; // List of server addresses
-    int rtnVal = getaddrinfo(NULL, service, &addrCriteria, &servAddr);
-    if (rtnVal != 0)
-        DieWithUserMessage("getaddrinfo() failed", gai_strerror(rtnVal));
+/**
+ * indexOfIgnoreCase returns the index where b is found in a, ignoring the case.
+ */
+int indexOfIgnoreCase(char * a, char * b) {
+    if(strlen(b) > strlen(a)) {
+        return -1;
+    }
+    for(int i = 0; i < strlen(a); i++) {
+        if(tolower(a[i]) == tolower(b[0])) {
+            for(int j = 0; j < strlen(b); j++) {
+                if(tolower(a[i+j]) != tolower(b[j])) {
+                    break;
+                }
+                if(tolower(a[i+j]) == tolower(b[j]) && j == (strlen(b) - 1)) {
+                    return i;
+                }
+            }
+        }
+    }
+    return -1;
+};
 
-    int servSock = -1;
-    for (struct addrinfo *addr = servAddr; addr != NULL; addr = addr->ai_next) {
-        // Create a TCP socket
-        servSock = socket(addr->ai_family, addr->ai_socktype,
-                          addr->ai_protocol);
-        if (servSock < 0)
-            continue;       // Socket creation failed; try next address
+/**
+ *
+ */
+void procBuffer(struct Request* request, char buffer[], ssize_t numBytes, bool * headerComplete) {
 
-        // Bind to the local address and set socket to listen
-        if ((bind(servSock, addr->ai_addr, addr->ai_addrlen) == 0) &&
-            (listen(servSock, MAXPENDING) == 0)) {
-            // Print local address of socket
-            struct sockaddr_storage localAddr;
-            socklen_t addrSize = sizeof(localAddr);
-            if (getsockname(servSock, (struct sockaddr *) &localAddr, &addrSize) < 0)
-                DieWithSystemMessage("getsockname() failed");
-            fputs("Binding to ", stdout);
-            PrintSocketAddress((struct sockaddr *) &localAddr, stdout);
-            fputc('\n', stdout);
-            break;       // Bind and listen successful
+    // Save buffer to request header
+    if(request->requestHeader == NULL || !strstr(request->requestHeader, "\r\n\r\n")) {
+
+        // If buffer contains header end
+        if(strstr(buffer, "\r\n\r\n")) {
+
+            char * end = strstr(buffer, "\r\n\r\n");
+
+            // if the request has not yet been set
+            // Copy buffer up to the double crlf into the header
+            if(request->requestHeader == NULL) {
+                request->requestHeader = malloc(end - buffer);
+                memcpy(request->requestHeader, buffer, end - buffer);
+            }
+            else {
+                size_t newlen = (end - buffer) + strlen(request->requestHeader);
+                char * temp = malloc(newlen);
+                memcpy(temp, request->requestHeader, strlen(request->requestHeader) - 1);
+                free(request->requestHeader);
+                request->requestHeader = temp;
+            }
+
+            *headerComplete = true;
         }
 
-        close(servSock);  // Close and try again
-        servSock = -1;
+        // If buffer does not contain header end
+        else {
+
+            // if the request has not yet been set
+            // Copy buffer into request header
+            if(request->requestHeader == NULL) {
+                request->requestHeader = malloc((size_t)numBytes);
+                strcpy(request->requestHeader, buffer);
+            }
+            else {
+                size_t newlen = strlen(buffer) + strlen(request->requestHeader);
+                char * temp = malloc(newlen);
+                memcpy(temp, request->requestHeader, strlen(request->requestHeader) - 1);
+                free(request->requestHeader);
+                request->requestHeader = temp;
+            }
+        }
     }
 
-    // Free address list allocated by getaddrinfo()
-    freeaddrinfo(servAddr);
-
-    return servSock;
 }
 
+/**
+ * Processes the header string in the request object.
+ *
+ */
+void procHeader(struct Request* request, bool * headerValid) {
+
+    // Read header into Request struct
+    const char crlf[3] = "\r\n";
+    const char sp[2] = " ";
+    char *requestLine;
+    char *line;
+
+    // Get the first line
+    requestLine = strtok(request->requestHeader, crlf);
+
+    // Get subsequent lines
+    line = strtok(NULL, crlf);
+
+    // Walk through other lines
+    while( line != NULL )
+    {
+        // Process line host
+        if(indexOfIgnoreCase(line, "host:") == 0) {
+
+            // Copy host
+            char* host = malloc(strlen(line) - indexOfIgnoreCase(line, ":") + 1);
+            strcpy(host, &line[indexOfIgnoreCase(line, ":") + 1]);
+
+            if(isspace(host[0])) {
+                host++;
+            }
+
+            // Check for port number
+            if(indexOfIgnoreCase(host, ":") >= 0) {
+                request->host.hostname = malloc((size_t)indexOfIgnoreCase(host, ":"));
+                memcpy(request->host.hostname, host, indexOfIgnoreCase(host, ":"));
+                request->host.portNum = malloc(strlen(&host[indexOfIgnoreCase(host, ":") + 1]));
+                strcpy(request->host.portNum, &host[indexOfIgnoreCase(host, ":") + 1]);
+            }
+            else {
+                request->host.hostname = malloc(strlen(host));
+                strcpy(request->host.hostname, host);
+                request->host.portNum = malloc(3);
+                strcpy(request->host.portNum, "80");
+            }
+        }
+
+        // Process line host
+        if(indexOfIgnoreCase(line, "user-agent:") == 0) {
+            request->userAgent = malloc(strlen(line) - indexOfIgnoreCase(line, ":") + 1);
+            strcpy(request->userAgent, &line[indexOfIgnoreCase(line, ":") + 1]);
+        }
+
+        // TODO make sure that the line is syntactically valid
+
+        line = strtok(NULL, crlf);
+    }
+
+    char *method = strtok(requestLine, sp);
+    char *path = strtok(NULL, sp);
+    char *httpVersion = strtok(NULL, sp);
+
+    // If header info is incomplete
+    if(method == NULL || path == NULL || httpVersion == NULL
+       || request->host.hostname == NULL || request->userAgent == NULL || strtok(NULL, sp)) {
+        return;
+    }
+
+    if(equals(path, "/")) {
+        request->host.serverPath = malloc(12);
+        strcpy(request->host.serverPath, "/index.html");
+    }
+    else {
+        request->host.serverPath = path;
+    }
+    request->method = method;
+
+    *headerValid = true;
+}
+
+
+void sendHeader(int clntSocket, int errorCode) {
+
+    // TODO Send header
+
+}
+
+
+/**
+ *
+ */
+void sendError(int clntSocket, int errorCode) {
+
+    sendHeader(clntSocket, errorCode);
+
+    // Sends the specified error code to the client
+
+    // TODO send body
+
+    close(clntSocket); // Close client socket
+}
+
+/**
+ * Accepts the connection to the client.
+ *
+ */
 int AcceptTCPConnection(int servSock) {
-    struct sockaddr_storage clntAddr; // Client address
+
+    // Client address
+    struct sockaddr_storage clntAddr;
+
     // Set length of client address structure (in-out parameter)
     socklen_t clntAddrLen = sizeof(clntAddr);
 
@@ -93,7 +267,6 @@ int AcceptTCPConnection(int servSock) {
         DieWithSystemMessage("accept() failed");
 
     // clntSock is connected to a client!
-
     fputs("Handling client ", stdout);
     PrintSocketAddress((struct sockaddr *) &clntAddr, stdout);
     fputc('\n', stdout);
@@ -101,41 +274,92 @@ int AcceptTCPConnection(int servSock) {
     return clntSock;
 }
 
+
+/**
+ * Takes a pointer to a client socket, and receives and processes the request passed.
+ *
+ */
 void HandleTCPClient(int clntSocket) {
-    char datestring[5] = "date\0";
-    char timestring[5] = "time\0";
-    char buffer[BUFSIZE]; // Buffer for echo string
-    char ret[11];
 
-    // Get current date and time
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
+    // Buffer for echo string
+    char buffer[BUFSIZE];
+    bool headerComplete = false;
+    bool headerValid = false;
 
-    // Receive message from client
-    ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
-    if (numBytesRcvd < 0)
-        DieWithSystemMessage("recv() failed");
+    ssize_t numBytesRcvd;
+    struct Request request;
+    memset(&request, 0, sizeof(struct Request));
 
-    // Figure out which string was given
-    if(strcmp(buffer, datestring) == 0) {
-        strftime(ret, 11, "%Y-%m-%d", &tm);
+    // Run recv in loop to get the whole request
+    while(!headerComplete) {
+        // Receive message from client
+        numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
+        if (numBytesRcvd < 0)
+            DieWithSystemMessage("recv() failed");
+
+        // Parse request
+        procBuffer(&request, buffer, numBytesRcvd, &headerComplete);
     }
-    if(strcmp(buffer, timestring) == 0) {
-        strftime(ret, 11, "%H:%M:%S", &tm);
+
+    procHeader(&request, &headerValid);
+
+    // Send 400 error if request is malformed
+    if(!headerValid) {
+        sendError(clntSocket, 400);
+        return;
     }
 
-    // Echo message back to client
-    ssize_t numBytesSent = send(clntSocket, ret, strlen(ret), 0);
-    if (numBytesSent < 0)
-        DieWithSystemMessage("send() failed");
-    else if (numBytesSent != strlen(ret))
-        DieWithUserMessage("send()", "sent unexpected number of bytes");
+    // Send 404 error if file does not exist
+    struct stat document;
+    memset(&document, 0, sizeof(stat));
+
+    // Append documentRoot to serverPath
+    char * filepath = malloc(strlen(documentRootPath) + strlen(request.host.serverPath));
+    memcpy(filepath, documentRootPath, strlen(documentRootPath));
+    strcpy(filepath + strlen(documentRootPath), request.host.serverPath);
+
+    if (stat(filepath, &document) == -1) {
+        sendError(clntSocket, 404);
+        return;
+    }
+
+    // Send 403 error if file is not world readable
+    if(!(document.st_mode & S_IROTH)) {
+        sendError(clntSocket, 403);
+        return;
+    }
+
+    // Get file descriptor of the file that will be sent
+    char abspath[1024];
+    realpath(filepath, abspath);
+
+    if( access(abspath, F_OK ) == -1 ) {
+        sendError(clntSocket, 404);
+        return;
+    }
+
+    FILE * file = fopen(abspath, "r");
+    if(!file) {
+        printf("fileopen failed\n");
+    }
+
+    // Send response header to the client
+    sendHeader(clntSocket, 200);
+
+    // Use sendFile() to send the file to the client
+    off_t sent = 0;
+    struct sf_hdtr headers;
+    memset(&headers, 0, sizeof(struct sf_hdtr));
+    sendfile(clntSocket, fileno(file), 0, document.st_size);
 
     close(clntSocket); // Close client socket
 }
 
 
-
+/**
+ * The thread that gets spawned whenever a client connects.
+ *
+ */
 void *thread_main(void *args)
 {
     // Guarantees that thread resources are deallocated upon return
@@ -157,10 +381,27 @@ void *thread_main(void *args)
 
 int main(int argc, char *argv[]) {
 
-    if (argc != 2) // Test for correct number of arguments
-        DieWithUserMessage("Parameter(s)", "<Server Port>");
+    if (argc != 3) // Test for correct number of arguments
+        DieWithUserMessage("Parameter(s)", "<Server Port> <Document Root>");
 
-    in_port_t servPort = atoi(argv[1]); // First arg:  local port
+    servPort = atoi(argv[1]); // First arg:  local port
+
+    // Save the document root.
+    documentRootPath = argv[2];
+    memset(&documentRoot, 0, sizeof(stat));       // Zero out structure
+    if (stat(argv[2], &documentRoot) == -1) {
+        DieWithSystemMessage("stat() failed");
+    }
+
+    // Error if root is not a directory
+    if(!S_ISDIR(documentRoot.st_mode)) {
+        DieWithSystemMessage("Root is not a Directory");
+    }
+
+    // Error if root is not world readable
+    if(!(documentRoot.st_mode & S_IROTH)) {
+        DieWithSystemMessage("Root is not a World Readable");
+    }
 
     // Create socket for incoming connections
     int servSock; // Socket descriptor for server
@@ -182,7 +423,7 @@ int main(int argc, char *argv[]) {
     if (listen(servSock, MAXPENDING) < 0)
         DieWithSystemMessage("listen() failed");
 
-    for (;;) { // Run forever
+    while (true) { // Run forever
 
         // Create separate memory for client argument
         struct ThreadArgs *threadArgs = (struct ThreadArgs *) malloc(
