@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-ggdb -std=c99 -D_GNU_SOURCE
+CFLAGS=-ggdb -std=c99 -D_GNU_SOURCE -pthread
 
 all: client server
 

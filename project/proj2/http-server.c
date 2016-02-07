@@ -40,6 +40,7 @@ struct Host {
     char * hostname;
     char * portNum;
     char * serverPath;
+    char * contentType;
 };
 
 struct Request {
@@ -218,9 +219,26 @@ void procHeader(struct Request* request, bool * headerValid) {
     if(equals(path, "/")) {
         request->host.serverPath = malloc(12);
         strcpy(request->host.serverPath, "/index.html");
+        request->host.contentType = malloc(10);
+        strcpy(request->host.contentType, "text/html");
     }
     else {
         request->host.serverPath = path;
+
+        if(indexOfIgnoreCase(request->host.serverPath, ".html") > 0) {
+            request->host.contentType = malloc(10);
+            strcpy(request->host.contentType, "image/html");
+        }
+
+        if(indexOfIgnoreCase(request->host.serverPath, ".jpg") > 0 || indexOfIgnoreCase(request->host.serverPath, ".jpeg") > 0) {
+            request->host.contentType = malloc(11);
+            strcpy(request->host.contentType, "image/jpeg");
+        }
+
+        if(indexOfIgnoreCase(request->host.serverPath, ".png") > 0) {
+            request->host.contentType = malloc(10);
+            strcpy(request->host.contentType, "image/png");
+        }
     }
     request->method = method;
 
@@ -228,10 +246,38 @@ void procHeader(struct Request* request, bool * headerValid) {
 }
 
 
-void sendHeader(int clntSocket, int errorCode) {
+void sendHeader(int clntSocket, int errorCode, int contentLength, char * contentType) {
 
-    // TODO Send header
+    char * codeString;
 
+    switch (errorCode) {
+        case 200:
+            codeString = malloc(strlen("OK"));
+            strcpy(codeString, "OK");
+            break;
+        case 400:
+            codeString = malloc(strlen("Bad Request"));
+            strcpy(codeString, "Bad Request");
+            break;
+        case 403:
+            codeString = malloc(strlen("Forbidden"));
+            strcpy(codeString, "Forbidden");
+            break;
+        case 404:
+            codeString = malloc(strlen("Not Found"));
+            strcpy(codeString, "Not Found");
+            break;
+    }
+
+    // Send header
+    int responseHeaderSize = snprintf(NULL, 0, "HTTP/1.1 %d %s\r\nServer: http-server-dckao\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", errorCode, codeString, contentType, contentLength) + 1;
+    char * responseHeader = (char *)malloc(responseHeaderSize);
+    snprintf(responseHeader, responseHeaderSize, "HTTP/1.1 %d %s\r\nServer: http-server-dckao\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", errorCode, codeString, contentType, contentLength);
+
+    // Send the HTTP request to the server
+    send(clntSocket, responseHeader, responseHeaderSize, 0);
+
+    free(codeString);
 }
 
 
@@ -240,11 +286,15 @@ void sendHeader(int clntSocket, int errorCode) {
  */
 void sendError(int clntSocket, int errorCode) {
 
-    sendHeader(clntSocket, errorCode);
+    int bodySize = snprintf(NULL, 0, "<h1>%d Error</h1>", errorCode) + 1;
+    char * responseBody = (char *)malloc(bodySize);
+    snprintf(responseBody, bodySize, "<h1>%d Error</h1>", errorCode);
 
     // Sends the specified error code to the client
+    sendHeader(clntSocket, errorCode, bodySize, "text/html");
 
-    // TODO send body
+    // send body
+    send(clntSocket, responseBody, bodySize, 0);
 
     close(clntSocket); // Close client socket
 }
@@ -318,7 +368,13 @@ void HandleTCPClient(int clntSocket) {
     memcpy(filepath, documentRootPath, strlen(documentRootPath));
     strcpy(filepath + strlen(documentRootPath), request.host.serverPath);
 
-    if (stat(filepath, &document) == -1) {
+    // Get file descriptor of the file that will be sent
+    char abspath[1024];
+    realpath(filepath, abspath);
+    printf("%s\n", abspath);
+
+    if (stat(abspath, &document) == -1) {
+        printf("boo1\n");
         sendError(clntSocket, 404);
         return;
     }
@@ -329,28 +385,20 @@ void HandleTCPClient(int clntSocket) {
         return;
     }
 
-    // Get file descriptor of the file that will be sent
-    char abspath[1024];
-    realpath(filepath, abspath);
-
-    if( access(abspath, F_OK ) == -1 ) {
+    if(access(abspath, F_OK ) == -1 ) {
+        printf("boo2\n");
         sendError(clntSocket, 404);
         return;
     }
 
     FILE * file = fopen(abspath, "r");
-    if(!file) {
-        printf("fileopen failed\n");
-    }
 
     // Send response header to the client
-    sendHeader(clntSocket, 200);
+    sendHeader(clntSocket, 200, document.st_size, request.host.contentType);
 
     // Use sendFile() to send the file to the client
     off_t sent = 0;
-    struct sf_hdtr headers;
-    memset(&headers, 0, sizeof(struct sf_hdtr));
-    sendfile(clntSocket, fileno(file), 0, document.st_size);
+    sendfile(clntSocket, fileno(file), &sent, document.st_size);
 
     close(clntSocket); // Close client socket
 }
