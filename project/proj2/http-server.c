@@ -119,11 +119,10 @@ void procBuffer(struct Request* request, char buffer[], ssize_t numBytes, bool *
             else {
                 size_t newlen = (end - buffer) + strlen(request->requestHeader);
                 char * temp = malloc(newlen);
-                memcpy(temp, request->requestHeader, strlen(request->requestHeader) - 1);
+                memcpy(temp, request->requestHeader, strlen(request->requestHeader));
                 free(request->requestHeader);
                 request->requestHeader = temp;
             }
-
             *headerComplete = true;
         }
 
@@ -134,14 +133,20 @@ void procBuffer(struct Request* request, char buffer[], ssize_t numBytes, bool *
             // Copy buffer into request header
             if(request->requestHeader == NULL) {
                 request->requestHeader = malloc((size_t)numBytes);
-                strcpy(request->requestHeader, buffer);
+                memcpy(request->requestHeader, buffer, numBytes);
             }
             else {
-                size_t newlen = strlen(buffer) + strlen(request->requestHeader);
+                size_t newlen = numBytes + strlen(request->requestHeader);
                 char * temp = malloc(newlen);
-                memcpy(temp, request->requestHeader, strlen(request->requestHeader) - 1);
-                free(request->requestHeader);
+
+                memcpy(temp, request->requestHeader, strlen(request->requestHeader));
+                strcpy(temp + strlen(request->requestHeader), buffer);
+
                 request->requestHeader = temp;
+            }
+
+            if(strstr(request->requestHeader, "\r\n\r\n")) {
+                *headerComplete = true;
             }
         }
     }
@@ -227,7 +232,7 @@ void procHeader(struct Request* request, bool * headerValid) {
 
         if(indexOfIgnoreCase(request->host.serverPath, ".html") > 0) {
             request->host.contentType = malloc(10);
-            strcpy(request->host.contentType, "image/html");
+            strcpy(request->host.contentType, "text/html");
         }
 
         if(indexOfIgnoreCase(request->host.serverPath, ".jpg") > 0 || indexOfIgnoreCase(request->host.serverPath, ".jpeg") > 0) {
@@ -342,6 +347,7 @@ void HandleTCPClient(int clntSocket) {
 
     // Run recv in loop to get the whole request
     while(!headerComplete) {
+        memset(&buffer, '\0', BUFSIZE);
         // Receive message from client
         numBytesRcvd = recv(clntSocket, buffer, BUFSIZE, 0);
         if (numBytesRcvd < 0)
