@@ -1,10 +1,16 @@
-.idea
 
+# Ignore Boilerplate
+.idea
 CMakeLists.txt
 
-
+# Project 1
 http-client
 http-client.dSYM
 
+# Project 2
+http-server
+http-server.dSYM
+
+# Homeworks
 client
 server
