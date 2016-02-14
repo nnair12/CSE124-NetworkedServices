@@ -1,0 +1,348 @@
+This is ApacheBench, Version 2.3 <$Revision$>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking seed-f60-102.ucsd.edu (be patient).....done
+
+
+Server Software:        http-server-dckao
+Server Hostname:        seed-f60-102.ucsd.edu
+Server Port:            8888
+
+Document Path:          /file1K.html
+Document Length:        1024 bytes
+
+Concurrency Level:      1
+Time taken for tests:   0.066 seconds
+Complete requests:      100
+Failed requests:        0
+Write errors:           0
+Total transferred:      113600 bytes
+HTML transferred:       102400 bytes
+Requests per second:    1509.89 [#/sec] (mean)
+Time per request:       0.662 [ms] (mean)
+Time per request:       0.662 [ms] (mean, across all concurrent requests)
+Transfer rate:          1675.03 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       0
+Processing:     0    0   1.7      0      17
+Waiting:        0    0   0.1      0       0
+Total:          0    1   1.7      0      18
+
+Percentage of the requests served within a certain time (ms)
+  50%      0
+  66%      0
+  75%      1
+  80%      1
+  90%      1
+  95%      1
+  98%      1
+  99%     18
+ 100%     18 (longest request)
+This is ApacheBench, Version 2.3 <$Revision$>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking seed-f60-102.ucsd.edu (be patient).....done
+
+
+Server Software:        http-server-dckao
+Server Hostname:        seed-f60-102.ucsd.edu
+Server Port:            8888
+
+Document Path:          /file10K.html
+Document Length:        10240 bytes
+
+Concurrency Level:      1
+Time taken for tests:   0.084 seconds
+Complete requests:      100
+Failed requests:        0
+Write errors:           0
+Total transferred:      1035300 bytes
+HTML transferred:       1024000 bytes
+Requests per second:    1186.45 [#/sec] (mean)
+Time per request:       0.843 [ms] (mean)
+Time per request:       0.843 [ms] (mean, across all concurrent requests)
+Transfer rate:          11995.43 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       0
+Processing:     0    1   2.2      0      23
+Waiting:        0    0   0.0      0       0
+Total:          0    1   2.3      1      23
+
+Percentage of the requests served within a certain time (ms)
+  50%      1
+  66%      1
+  75%      1
+  80%      1
+  90%      1
+  95%      1
+  98%      1
+  99%     23
+ 100%     23 (longest request)
+This is ApacheBench, Version 2.3 <$Revision$>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking seed-f60-102.ucsd.edu (be patient).....done
+
+
+Server Software:        http-server-dckao
+Server Hostname:        seed-f60-102.ucsd.edu
+Server Port:            8888
+
+Document Path:          /file100K.html
+Document Length:        102400 bytes
+
+Concurrency Level:      1
+Time taken for tests:   0.180 seconds
+Complete requests:      100
+Failed requests:        0
+Write errors:           0
+Total transferred:      10251400 bytes
+HTML transferred:       10240000 bytes
+Requests per second:    557.00 [#/sec] (mean)
+Time per request:       1.795 [ms] (mean)
+Time per request:       1.795 [ms] (mean, across all concurrent requests)
+Transfer rate:          55762.39 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       0
+Processing:     1    2   2.0      1      21
+Waiting:        0    0   0.0      0       0
+Total:          1    2   2.0      2      21
+
+Percentage of the requests served within a certain time (ms)
+  50%      2
+  66%      2
+  75%      2
+  80%      2
+  90%      2
+  95%      2
+  98%      2
+  99%     21
+ 100%     21 (longest request)
+This is ApacheBench, Version 2.3 <$Revision$>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking seed-f60-102.ucsd.edu (be patient).....done
+
+
+Server Software:        http-server-dckao
+Server Hostname:        seed-f60-102.ucsd.edu
+Server Port:            8888
+
+Document Path:          /file1M.html
+Document Length:        1048576 bytes
+
+Concurrency Level:      1
+Time taken for tests:   1.004 seconds
+Complete requests:      100
+Failed requests:        0
+Write errors:           0
+Total transferred:      104869100 bytes
+HTML transferred:       104857600 bytes
+Requests per second:    99.60 [#/sec] (mean)
+Time per request:       10.040 [ms] (mean)
+Time per request:       10.040 [ms] (mean, across all concurrent requests)
+Transfer rate:          101999.76 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       0
+Processing:     9   10   2.7     10      37
+Waiting:        0    0   0.1      0       0
+Total:          9   10   2.8     10      37
+
+Percentage of the requests served within a certain time (ms)
+  50%     10
+  66%     10
+  75%     10
+  80%     10
+  90%     10
+  95%     10
+  98%     11
+  99%     37
+ 100%     37 (longest request)
+This is ApacheBench, Version 2.3 <$Revision$>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking seed-f60-102.ucsd.edu (be patient).....done
+
+
+Server Software:        http-server-dckao
+Server Hostname:        seed-f60-102.ucsd.edu
+Server Port:            8888
+
+Document Path:          /file10M.html
+Document Length:        10485760 bytes
+
+Concurrency Level:      1
+Time taken for tests:   9.070 seconds
+Complete requests:      100
+Failed requests:        0
+Write errors:           0
+Total transferred:      1048587600 bytes
+HTML transferred:       1048576000 bytes
+Requests per second:    11.02 [#/sec] (mean)
+Time per request:       90.703 [ms] (mean)
+Time per request:       90.703 [ms] (mean, across all concurrent requests)
+Transfer rate:          112896.57 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       0
+Processing:    89   91   6.8     90     158
+Waiting:        0    0   0.0      0       0
+Total:         90   91   6.8     90     158
+
+Percentage of the requests served within a certain time (ms)
+  50%     90
+  66%     90
+  75%     90
+  80%     90
+  90%     91
+  95%     91
+  98%     91
+  99%    158
+ 100%    158 (longest request)
+This is ApacheBench, Version 2.3 <$Revision$>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking seed-f60-102.ucsd.edu (be patient).....done
+
+
+Server Software:        http-server-dckao
+Server Hostname:        seed-f60-102.ucsd.edu
+Server Port:            8888
+
+Document Path:          /file1K.html
+Document Length:        1024 bytes
+
+Concurrency Level:      1
+Time taken for tests:   0.044 seconds
+Complete requests:      100
+Failed requests:        0
+Write errors:           0
+Total transferred:      113600 bytes
+HTML transferred:       102400 bytes
+Requests per second:    2273.40 [#/sec] (mean)
+Time per request:       0.440 [ms] (mean)
+Time per request:       0.440 [ms] (mean, across all concurrent requests)
+Transfer rate:          2522.05 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       0
+Processing:     0    0   0.0      0       0
+Waiting:        0    0   0.0      0       0
+Total:          0    0   0.1      0       1
+
+Percentage of the requests served within a certain time (ms)
+  50%      0
+  66%      0
+  75%      0
+  80%      0
+  90%      1
+  95%      1
+  98%      1
+  99%      1
+ 100%      1 (longest request)
+This is ApacheBench, Version 2.3 <$Revision$>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking seed-f60-102.ucsd.edu (be patient).....done
+
+
+Server Software:        http-server-dckao
+Server Hostname:        seed-f60-102.ucsd.edu
+Server Port:            8888
+
+Document Path:          /file1K.html
+Document Length:        1024 bytes
+
+Concurrency Level:      5
+Time taken for tests:   0.008 seconds
+Complete requests:      100
+Failed requests:        6
+   (Connect: 0, Receive: 0, Length: 6, Exceptions: 0)
+Write errors:           0
+Non-2xx responses:      6
+Total transferred:      107612 bytes
+HTML transferred:       96370 bytes
+Requests per second:    13068.48 [#/sec] (mean)
+Time per request:       0.383 [ms] (mean)
+Time per request:       0.077 [ms] (mean, across all concurrent requests)
+Transfer rate:          13733.64 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       0
+Processing:     0    0   0.1      0       0
+Waiting:        0    0   0.1      0       0
+Total:          0    0   0.1      0       1
+
+Percentage of the requests served within a certain time (ms)
+  50%      0
+  66%      0
+  75%      0
+  80%      0
+  90%      1
+  95%      1
+  98%      1
+  99%      1
+ 100%      1 (longest request)
+This is ApacheBench, Version 2.3 <$Revision$>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking seed-f60-102.ucsd.edu (be patient).....done
+
+
+Server Software:        http-server-dckao
+Server Hostname:        seed-f60-102.ucsd.edu
+Server Port:            8888
+
+Document Path:          /file1K.html
+Document Length:        1024 bytes
+
+Concurrency Level:      10
+Time taken for tests:   0.007 seconds
+Complete requests:      100
+Failed requests:        3
+   (Connect: 0, Receive: 0, Length: 3, Exceptions: 0)
+Write errors:           0
+Non-2xx responses:      3
+Total transferred:      110606 bytes
+HTML transferred:       99385 bytes
+Requests per second:    15330.37 [#/sec] (mean)
+Time per request:       0.652 [ms] (mean)
+Time per request:       0.065 [ms] (mean, across all concurrent requests)
+Transfer rate:          16558.89 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       0
+Processing:     0    1   0.1      1       1
+Waiting:        0    0   0.1      0       1
+Total:          0    1   0.1      1       1
+
+Percentage of the requests served within a certain time (ms)
+  50%      1
+  66%      1
+  75%      1
+  80%      1
+  90%      1
+  95%      1
+  98%      1
+  99%      1
+ 100%      1 (longest request)
