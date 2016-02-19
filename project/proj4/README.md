@@ -33,14 +33,20 @@ Your first task is to implement the networked service under test, which will be 
 **DelayMe protocol (client->server)**: A request (from the client to the server) consists of:
 
 * `delay  mu  sigma`
+
 Where:
+
 * `delay`: a static token
 * mu: the mean/expectation of the normal distribution (a whole, non-negative number)
 * sigma: the standard deviation of the normal distribution(a whole, non-negative number)
 
 **DelayMe protocol (server->client)**: A response (from the server to the client) consists of:
 
+* bye
+
 Where:
+
+* bye: a static token
 
 ## Client
 
