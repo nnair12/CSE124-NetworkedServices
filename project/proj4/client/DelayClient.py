@@ -43,6 +43,9 @@ def sendRequest():
 
         if (float(completed) / requests) >= finish:
             print('Program Took: %dms' % (int(round(time.time() * 1000)) - progMillis))
+
+            if not sys.argv[4] or (sys.argv[4] != 'parallel'):
+                print('Average Request: %dms' % ((int(round(time.time() * 1000)) - progMillis) / float(requests)))
             os._exit(0)
 
     finally:
@@ -75,6 +78,3 @@ if sys.argv[4] and (sys.argv[4] == 'parallel'):
 else:
     for i in range(0, requests):
         sendRequest()
-
-
-print('Program Took: %dms' % (int(round(time.time() * 1000)) - progMillis))
