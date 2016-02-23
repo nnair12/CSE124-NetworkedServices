@@ -1,0 +1,31 @@
+Student: /root/test/Repos/dckao/
+-------------------------------------
+Test Case 1: [400 error expected]
+Bad_server_status: Malformed request NOT detected
+ 
+Test Case 2: [403 error expected] Requesting /forbidden/kitty2.png
+PASSED
+ 
+Test Case 3: [404 error expected] Requesting /doesNotExist.html
+PASSED
+ 
+Test Case 4: [200 OK expected] Requesting /index.html
+PASSED
+ 
+Test Case 5: [200 OK expected] Requesting /
+PASSED
+ 
+Test Case 6: [200 OK expected] Requesting /lion.png
+PASSED
+ 
+Test Case 7: [200 OK expected] Requesting /tiger.jpg
+PASSED
+ 
+Test Case 8: [200 OK expected] Requesting /subdir/kitty1.jpg
+PASSED
+ 
+Test Case 9 (2 points): [Concurrency]
+PASSED
+ 
+Score: 9/10 
+-------------------------------------
