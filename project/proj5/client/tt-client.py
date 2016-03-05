@@ -103,6 +103,7 @@ try:
 
             # add the block into the array
             fileBlocks.append(block)
+            localBlocks[i] = block
 
         # Generate and save file
         fileOutData = ''.join(fileBlocks)

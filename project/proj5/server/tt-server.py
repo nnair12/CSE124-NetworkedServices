@@ -15,6 +15,8 @@ sys.path.append('gen-py')
 from tritonTransfer import transfer
 from tritonTransfer.ttypes import *
 
+BLOCK_SIZE = 16000
+
 # Metadata store
 metadata = {}
 
@@ -42,7 +44,7 @@ class transferHandler:
 
         # Loop through all things in the hashlist to determine what exists
         for i in hashlist:
-            if not blocks.has_key(i):
+            if not blocks.has_key(i) and i not in missingBlocks:
                 missingBlocks.append(i)
 
         # Sends the missing blocks back to the client
@@ -52,7 +54,7 @@ class transferHandler:
     def uploadBlock(self, hash, block):
 
         # check length and valid hash
-        if len(block) > 16 or hashlib.sha256(block).hexdigest() != hash:
+        if len(block) > BLOCK_SIZE or hashlib.sha256(block).hexdigest() != hash:
             return 'ERROR'
 
         # save block into the blocks dict
