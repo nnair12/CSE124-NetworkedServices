@@ -28,7 +28,7 @@ TritonTransfer consists of a command-line client and a command-line server. The 
 To upload a file, the client is invoked as follows:
 
 ```
-$ tt-client   upload
+$ tt-client <server_name> <server_port> upload <filename>
 ```
 
 1. **server_name**: The hostname/IP of the server
@@ -41,7 +41,7 @@ $ tt-client   upload
 To download a file, the client is invoked similarly:
 
 ```
-$ tt-client   download
+$ tt-client <server_name> <server_port> download <filename> <download_dir>
 ```
 
 1. **server_name**: The hostname/IP of the server
@@ -56,7 +56,7 @@ $ tt-client   download
 Your server is invoked as follows:
 
 ```
-$ tt-server
+$ tt-server <server_port> <file_dir>
 ```
 
 1. **server_port**: The port on the server
