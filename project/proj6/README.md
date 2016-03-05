@@ -40,7 +40,7 @@ $ tt-md-server
 The block server is invoked as follows:
 
 ```
-$ tt-block-server
+$ tt-md-server <server_port>
 ```
 
 1. **server_port**: The port to listen for incoming connections
