@@ -14,7 +14,7 @@ from thrift.transport import TSocket
 from thrift.transport import TTransport
 from thrift.protocol import TBinaryProtocol
 
-BLOCK_SIZE = 16
+BLOCK_SIZE = 16000
 
 
 # Ensure that the right number of command line parameters were given
