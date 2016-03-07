@@ -24,10 +24,11 @@ if len(sys.argv) != 5 and len(sys.argv) != 6:
 
 # Set the port number
 portNum = int(sys.argv[2])
+server = sys.argv[1]
 
 try:
 
-    transport = TSocket.TSocket('localhost', portNum)
+    transport = TSocket.TSocket(server, portNum)
 
     # Buffering is critical. Raw sockets are very slow
     transport = TTransport.TBufferedTransport(transport)
