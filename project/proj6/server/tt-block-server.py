@@ -67,7 +67,34 @@ portNum = int(sys.argv[1])
 metadataServer = sys.argv[2]
 metadataServerPort = int(sys.argv[3])
 
-# Apache thrift things
+# Register with the metadata server
+try:
+
+    metadatatransport = TSocket.TSocket(metadataServer, metadataServerPort)
+
+    # Buffering is critical. Raw sockets are very slow
+    metadatatransport = TTransport.TBufferedTransport(metadatatransport)
+
+    # Wrap in a protocol
+    protocol = TBinaryProtocol.TBinaryProtocol(metadatatransport)
+
+    # Create a client to use the protocol encoder
+    client = transfer.Client(protocol)
+
+    # Connect!
+    metadatatransport.open()
+
+    # Register block server into metadata server
+    if client.registerBlockServer(portNum) != 'OK':
+        print 'ERROR'
+        sys.exit(0)
+
+except Thrift.TException, tx:
+    print '%s' % (tx.message)
+    sys.exit(0)
+
+
+# Apache thrift server
 handler = transferHandler()
 processor = transfer.Processor(handler)
 transport = TSocket.TServerSocket(port=portNum)
@@ -77,24 +104,3 @@ pfactory = TBinaryProtocol.TBinaryProtocolFactory()
 server = TServer.TThreadedServer(processor, transport, tfactory, pfactory)
 
 server.serve()
-
-try:
-
-    transport = TSocket.TSocket(metadataServer, portNum)
-
-    # Buffering is critical. Raw sockets are very slow
-    transport = TTransport.TBufferedTransport(transport)
-
-    # Wrap in a protocol
-    protocol = TBinaryProtocol.TBinaryProtocol(transport)
-
-    # Create a client to use the protocol encoder
-    client = transfer.Client(protocol)
-
-    # Connect!
-    transport.open()
-
-    print 'OK'
-
-except Thrift.TException, tx:
-    print '%s' % (tx.message)

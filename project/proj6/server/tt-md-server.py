@@ -3,6 +3,7 @@ import time
 import threading
 import os
 import hashlib
+import socket
 
 from thrift import Thrift
 from thrift.transport import TSocket
@@ -16,6 +17,7 @@ from tritonTransfer import transfer
 from tritonTransfer.ttypes import *
 
 BLOCK_SIZE = 16000
+SERVER_REDUNDANCY = 2
 
 # Block Servers
 blockServers = []
@@ -23,8 +25,8 @@ blockServers = []
 # Metadata store
 metadata = {}
 
-# Block store
-blocks = {}
+# hash location store
+hashLocations = {}
 
 # the handler that contains the methods specified in the thrift file
 class transferHandler:
@@ -34,8 +36,16 @@ class transferHandler:
         pass
 
 
-    def registerBlockServer(self, server, port):
-        pass
+    def registerBlockServer(self, port):
+
+        # Add the new server into the structure
+        blockServers.append(socket.gethostbyname(socket.gethostname()) + ':' + str(port))
+
+        # Make sure that the new server inside our structure
+        for server in blockServers:
+            if server == socket.gethostbyname(socket.gethostname()) + ':' + str(port):
+                return 'OK'
+        return 'ERROR'
 
 
     def uploadFile(self, fileName, hashlist):
@@ -51,8 +61,21 @@ class transferHandler:
 
         # Loop through all things in the hashlist to determine what exists
         for i in hashlist:
-            if not blocks.has_key(i) and i not in missingBlocks:
-                missingBlocks.append(i)
+            if not hashLocations.has_key(i) and i not in missingBlocks:
+
+                # Find the block servers with the least amount of items
+                blockCount = {}
+                for server in blockServers:
+                    blockCount[server] = 0
+                for hash in hashLocations:
+                    blockCount[hashLocations[hash][0]] += 1
+                    blockCount[hashLocations[hash][1]] += 1
+
+                # Upload to the servers we identified
+                uploadToServers = map(lambda x: x[0], sorted(blockCount.items(), key=lambda x: x[1]))[:SERVER_REDUNDANCY]
+
+                hashLocations[i] = uploadToServers
+                missingBlocks.append(str({'servers': uploadToServers, 'hash': i}))
 
         # Sends the missing blocks back to the client
         return missingBlocks
@@ -60,11 +83,14 @@ class transferHandler:
 
     def downloadFile(self, fileName):
 
+        downloadLocations = []
+
         # check the metadata store for the blocks
         if metadata.has_key(fileName):
-            return metadata[fileName]
-        else:
-            return []
+            for hash in metadata[fileName]:
+                downloadLocations.append(str({'servers': hashLocations[hash], 'hash': hash}))
+
+        return downloadLocations
 
 
 ###############################################################################
