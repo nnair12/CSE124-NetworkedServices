@@ -1,8 +1,11 @@
+#!/usr/bin/env python
+
 import sys
 import time
 import threading
 import os
 import hashlib
+import ast
 
 sys.path.append('gen-py')
 
@@ -91,20 +94,53 @@ try:
         # Get all the blocks
         for i in hashes:
 
+            download = ast.literal_eval(i)
+
             # if block exists locally
-            if localBlocks.has_key(i):
-                fileBlocks.append(localBlocks[i])
+            if localBlocks.has_key(download['hash']):
+                fileBlocks.append(localBlocks[download['hash']])
                 continue
 
-            # Query for the block on the server
-            block = client.downloadBlock(i)
-            if block == '':
+            block = ''
+
+            for server in download['servers']:
+
+                try:
+
+                    # Query for the block on the block server
+                    blockTransport = TSocket.TSocket(server.split(':')[0], server.split(':')[1])
+
+                    # Buffering is critical. Raw sockets are very slow
+                    blockTransport = TTransport.TBufferedTransport(blockTransport)
+
+                    # Wrap in a protocol
+                    blockProtocol = TBinaryProtocol.TBinaryProtocol(blockTransport)
+
+                    # Create a client to use the protocol encoder
+                    blockClient = transfer.Client(blockProtocol)
+
+                    # Connect!
+                    blockTransport.open()
+
+                    # upload to the block server
+                    block = blockClient.downloadBlock(download['hash'])
+
+                    if block != '':
+                        break
+
+                except Thrift.TException, tx:
+                    continue
+
+            if block != '':
+
+                # add the block into the array
+                fileBlocks.append(block)
+                localBlocks[download['hash']] = block
+
+            else:
+
                 print 'ERROR'
                 sys.exit(0)
-
-            # add the block into the array
-            fileBlocks.append(block)
-            localBlocks[i] = block
 
         # Generate and save file
         fileOutData = ''.join(fileBlocks)
@@ -145,9 +181,34 @@ try:
 
         # upload any missing blocks
         for i in missingBlocks:
-            client.uploadBlock(i, blocks[i])
+
+            upload = ast.literal_eval(i)
+
+            for server in upload['servers']:
+
+                try:
+                    blockTransport = TSocket.TSocket(server.split(':')[0], server.split(':')[1])
+
+                    # Buffering is critical. Raw sockets are very slow
+                    blockTransport = TTransport.TBufferedTransport(blockTransport)
+
+                    # Wrap in a protocol
+                    blockProtocol = TBinaryProtocol.TBinaryProtocol(blockTransport)
+
+                    # Create a client to use the protocol encoder
+                    blockClient = transfer.Client(blockProtocol)
+
+                    # Connect!
+                    blockTransport.open()
+
+                    # upload to the block server
+                    blockClient.uploadBlock(upload['hash'], blocks[upload['hash']])
+
+                except Thrift.TException, tx:
+                    pass
 
     print 'OK'
 
 except Thrift.TException, tx:
-    print '%s' % (tx.message)
+    #print '%s' % (tx.message)
+    pass

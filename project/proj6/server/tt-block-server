@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import sys
 import time
 import threading
@@ -31,26 +33,6 @@ class transferHandler:
         pass
 
 
-    def uploadFile(self, fileName, hashlist):
-
-        # Get only the filename and not the path
-        fileName = os.path.basename(fileName)
-
-        # Add the file metadata into the metadata store
-        metadata[fileName] = hashlist
-
-        # Keep track of the blocks that have not yet been updated
-        missingBlocks = []
-
-        # Loop through all things in the hashlist to determine what exists
-        for i in hashlist:
-            if not blocks.has_key(i) and i not in missingBlocks:
-                missingBlocks.append(i)
-
-        # Sends the missing blocks back to the client
-        return missingBlocks
-
-
     def uploadBlock(self, hash, block):
 
         # check length and valid hash
@@ -60,15 +42,6 @@ class transferHandler:
         # save block into the blocks dict
         blocks[hash] = block
         return 'OK'
-
-
-    def downloadFile(self, fileName):
-
-        # check the metadata store for the blocks
-        if metadata.has_key(fileName):
-            return metadata[fileName]
-        else:
-            return []
 
 
     def downloadBlock(self, hash):
@@ -85,13 +58,45 @@ class transferHandler:
 ###############################################################################
 
 # Ensure that the right number of command line parameters were given
-if len(sys.argv) != 3 and len(sys.argv) != 2:
-    print('Usage: tt-server <server_port>')
+if len(sys.argv) != 4:
+    print('Usage: tt-block-server <server_port> <metadata_server> <metadata_port>')
     sys.exit(0)
 
 # Set the port number
 portNum = int(sys.argv[1])
 
+# Set the metadata server information
+metadataServer = sys.argv[2]
+metadataServerPort = int(sys.argv[3])
+
+# Register with the metadata server
+try:
+
+    metadatatransport = TSocket.TSocket(metadataServer, metadataServerPort)
+
+    # Buffering is critical. Raw sockets are very slow
+    metadatatransport = TTransport.TBufferedTransport(metadatatransport)
+
+    # Wrap in a protocol
+    protocol = TBinaryProtocol.TBinaryProtocol(metadatatransport)
+
+    # Create a client to use the protocol encoder
+    client = transfer.Client(protocol)
+
+    # Connect!
+    metadatatransport.open()
+
+    # Register block server into metadata server
+    if client.registerBlockServer(portNum) != 'OK':
+        print 'ERROR'
+        sys.exit(0)
+
+except Thrift.TException, tx:
+    print '%s' % (tx.message)
+    sys.exit(0)
+
+
+# Apache thrift server
 handler = transferHandler()
 processor = transfer.Processor(handler)
 transport = TSocket.TServerSocket(port=portNum)
