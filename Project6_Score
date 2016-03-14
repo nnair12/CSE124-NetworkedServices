@@ -1,0 +1,29 @@
+Student: /root/test/Repos/dckao/
+-------------------------------------
+SERVER
+Makefile exist
+Started Metadata Server
+Started Block Server1
+Started Block Server2
+Started Block Server3
+----------
+CLIENT
+Makefile exist
+-------------------------------------
+Test Case 1: [UPLOADING FILE1]
+OK
+ 
+-------------------------------------
+Test Case 2: [UPLOADING FILE2]
+OK
+ 
+-------------------------------------
+Test Case 3: [DOWNLOADING FILE1]
+OK
+ 
+-------------------------------------
+Test Case 4: [FAILURE CASE]
+OK
+ 
+Score: 10/10 
+-------------------------------------
